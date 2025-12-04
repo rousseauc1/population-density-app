@@ -13,10 +13,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get country by ID
-router.get('/:id', async (req, res) => {
+// Get country by cca3 code
+router.get('/:cca3', async (req, res) => {
   try {
-    const country = await Country.findOne({ id: req.params.id });
+    const country = await Country.findOne({ cca3: req.params.cca3.toUpperCase() });
     if (!country) {
       return res.status(404).json({ error: 'Country not found' });
     }
@@ -38,10 +38,10 @@ router.post('/', async (req, res) => {
 });
 
 // Update a country
-router.put('/:id', async (req, res) => {
+router.put('/:cca3', async (req, res) => {
   try {
     const country = await Country.findOneAndUpdate(
-      { id: req.params.id },
+      { cca3: req.params.cca3.toUpperCase() },
       req.body,
       { new: true, runValidators: true }
     );
@@ -55,9 +55,9 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete a country
-router.delete('/:id', async (req, res) => {
+router.delete('/:cca3', async (req, res) => {
   try {
-    const country = await Country.findOneAndDelete({ id: req.params.id });
+    const country = await Country.findOneAndDelete({ cca3: req.params.cca3.toUpperCase() });
     if (!country) {
       return res.status(404).json({ error: 'Country not found' });
     }
@@ -75,10 +75,11 @@ router.get('/stats/summary', async (req, res) => {
         $group: {
           _id: null,
           totalCountries: { $sum: 1 },
-          avgDensity: { $avg: '$population_density' },
-          maxDensity: { $max: '$population_density' },
-          minDensity: { $min: '$population_density' },
-          totalPopulation: { $sum: '$population' },
+          avgDensity: { $avg: '$density' },
+          maxDensity: { $max: '$density' },
+          minDensity: { $min: '$density' },
+          totalPopulation: { $sum: '$pop2025' },
+          avgGrowthRate: { $avg: '$growthRate' },
         },
       },
     ]);

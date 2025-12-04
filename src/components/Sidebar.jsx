@@ -2,26 +2,27 @@ import React from 'react';
 
 const Sidebar = ({ selectedCountry, selectedMetric, countries }) => {
   const metricLabels = {
-    population_density: 'Population Density',
-    life_expectancy: 'Life Expectancy',
-    population: 'Total Population',
-    area: 'Land Area',
+    density: 'Population Density',
+    pop2025: 'Population 2025',
+    pop2050: 'Population 2050',
+    growthRate: 'Growth Rate',
+    worldPercentage: 'World Percentage',
   };
 
   const formatValue = (value, metric) => {
     if (!value && value !== 0) return 'N/A';
 
-    if (metric === 'population') {
+    if (metric === 'pop2025' || metric === 'pop2050') {
       return (value / 1000000).toFixed(2) + 'M';
     }
-    if (metric === 'area') {
-      return (value / 1000).toFixed(0) + 'K km²';
-    }
-    if (metric === 'population_density') {
+    if (metric === 'density') {
       return value.toFixed(2) + ' /km²';
     }
-    if (metric === 'life_expectancy') {
-      return value.toFixed(1) + ' years';
+    if (metric === 'growthRate') {
+      return (value * 100).toFixed(2) + '%';
+    }
+    if (metric === 'worldPercentage') {
+      return (value * 100).toFixed(2) + '%';
     }
     return value;
   };
@@ -47,32 +48,44 @@ const Sidebar = ({ selectedCountry, selectedMetric, countries }) => {
       {/* Selected Country Info */}
       {selectedCountry ? (
         <div className="px-6 py-4 border-b border-gray-700 bg-gray-750">
-          <h2 className="text-lg font-bold text-white mb-3">{selectedCountry.name}</h2>
+          <h2 className="text-lg font-bold text-white mb-3">{selectedCountry.country}</h2>
           <div className="space-y-2 text-sm">
             <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wide">Population</p>
+              <p className="text-gray-400 text-xs uppercase tracking-wide">2025 Population</p>
               <p className="text-blue-400 font-semibold">
-                {formatValue(selectedCountry.population, 'population')}
+                {formatValue(selectedCountry.pop2025, 'pop2025')}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs uppercase tracking-wide">2050 Projection</p>
+              <p className="text-green-400 font-semibold">
+                {formatValue(selectedCountry.pop2050, 'pop2050')}
               </p>
             </div>
             <div>
               <p className="text-gray-400 text-xs uppercase tracking-wide">Density</p>
-              <p className="text-green-400 font-semibold">
-                {formatValue(selectedCountry.population_density, 'population_density')}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wide">Life Expectancy</p>
               <p className="text-yellow-400 font-semibold">
-                {formatValue(selectedCountry.life_expectancy, 'life_expectancy')}
+                {formatValue(selectedCountry.density, 'density')}
               </p>
             </div>
             <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wide">Area</p>
+              <p className="text-gray-400 text-xs uppercase tracking-wide">Growth Rate</p>
               <p className="text-purple-400 font-semibold">
-                {formatValue(selectedCountry.area, 'area')}
+                {formatValue(selectedCountry.growthRate, 'growthRate')}
               </p>
             </div>
+            <div>
+              <p className="text-gray-400 text-xs uppercase tracking-wide">World %</p>
+              <p className="text-red-400 font-semibold">
+                {formatValue(selectedCountry.worldPercentage, 'worldPercentage')}
+              </p>
+            </div>
+            {selectedCountry.rank && (
+              <div>
+                <p className="text-gray-400 text-xs uppercase tracking-wide">Rank</p>
+                <p className="text-orange-400 font-semibold">#{selectedCountry.rank}</p>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -90,12 +103,12 @@ const Sidebar = ({ selectedCountry, selectedMetric, countries }) => {
           <div className="space-y-2">
             {getTopCountries().map((country, index) => (
               <div
-                key={country.id}
+                key={country.cca3}
                 className="bg-gray-700 hover:bg-gray-600 cursor-pointer p-3 rounded transition text-xs"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-semibold text-white">
-                    {index + 1}. {country.name}
+                    {index + 1}. {country.country}
                   </span>
                   <span className="text-gray-300">{index + 1}</span>
                 </div>

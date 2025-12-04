@@ -1,40 +1,46 @@
 import mongoose from 'mongoose';
 
 const countrySchema = new mongoose.Schema({
-  id: {
+  country: {
     type: String,
     required: true,
     unique: true,
   },
-  name: {
+  cca2: {
     type: String,
     required: true,
   },
-  population: {
+  cca3: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  pop2025: {
     type: Number,
     required: true,
+  },
+  pop2050: {
+    type: Number,
   },
   area: {
     type: Number,
-    required: true,
   },
-  population_density: {
+  landAreaKm: {
     type: Number,
     required: true,
   },
-  life_expectancy: {
+  density: {
     type: Number,
     required: true,
   },
-  gdp: {
+  growthRate: {
     type: Number,
   },
-  region: {
-    type: String,
+  worldPercentage: {
+    type: Number,
   },
-  coordinates: {
-    latitude: Number,
-    longitude: Number,
+  rank: {
+    type: Number,
   },
   createdAt: {
     type: Date,
@@ -46,4 +52,4 @@ const countrySchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model('Country', countrySchema);
+export default mongoose.model('Country', countrySchema, 'country_stats_2025');

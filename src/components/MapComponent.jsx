@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getHeatColor } from '../utils/colorScale';
-import { getCountryGeoJSON } from '../utils/geoData';
 
 const MapComponent = ({
   countries,
@@ -49,63 +48,68 @@ const MapComponent = ({
     }
 
     // Create country data map for quick lookup
-    const countryMap = new Map(countries.map((c) => [c.id, c]));
+    const countryMap = new Map(countries.map((c) => [c.cca3, c]));
 
     // Add GeoJSON layer
-    const geoJSONData = getCountryGeoJSON();
+    fetch('/src/utils/countries.geojson')
+      .then((res) => res.json())
+      .then((geoJSONData) => {
+        geoJsonLayer.current = L.geoJSON(geoJSONData, {
+          style: (feature) => {
+            const country = countryMap.get(feature.properties.iso_a3);
+            const value = country ? country[selectedMetric] : null;
+            const color = getHeatColor(value, selectedMetric, countries);
 
-    geoJsonLayer.current = L.geoJSON(geoJSONData, {
-      style: (feature) => {
-        const country = countryMap.get(feature.properties.iso_a3);
-        const value = country ? country[selectedMetric] : null;
-        const color = getHeatColor(value, selectedMetric, countries);
-
-        return {
-          fillColor: color,
-          weight: 1,
-          opacity: 0.8,
-          color: '#1a1a1a',
-          fillOpacity: 0.85,
-        };
-      },
-      onEachFeature: (feature, layer) => {
-        const country = countryMap.get(feature.properties.iso_a3);
-
-        if (country) {
-          const popupContent = `
-            <div class="bg-gray-800 text-white p-3 rounded shadow-lg">
-              <h3 class="font-bold text-lg mb-2">${country.name}</h3>
-              <p><strong>Population:</strong> ${(country.population / 1000000).toFixed(2)}M</p>
-              <p><strong>Density:</strong> ${country.population_density.toFixed(2)} /km²</p>
-              <p><strong>Area:</strong> ${(country.area / 1000).toFixed(0)}K km²</p>
-              <p><strong>Life Expectancy:</strong> ${country.life_expectancy.toFixed(1)} years</p>
-            </div>
-          `;
-
-          layer.bindPopup(popupContent);
-          layer.on('click', () => {
-            onCountrySelect(country);
-          });
-
-          layer.on('mouseover', function () {
-            this.setStyle({
-              weight: 2,
-              color: '#4ade80',
-              fillOpacity: 0.95,
-            });
-            this.bringToFront();
-          });
-
-          layer.on('mouseout', function () {
-            this.setStyle({
+            return {
+              fillColor: color,
               weight: 1,
+              opacity: 0.8,
               color: '#1a1a1a',
               fillOpacity: 0.85,
-            });
-          });
-        }
-      },
-    }).addTo(map.current);
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            const country = countryMap.get(feature.properties.iso_a3);
+
+            if (country) {
+              const popupContent = `
+                <div class="bg-gray-800 text-white p-3 rounded shadow-lg">
+                  <h3 class="font-bold text-lg mb-2">${country.country}</h3>
+                  <p><strong>Population 2025:</strong> ${(country.pop2025 / 1000000).toFixed(2)}M</p>
+                  <p><strong>Population 2050:</strong> ${(country.pop2050 / 1000000).toFixed(2)}M</p>
+                  <p><strong>Density:</strong> ${country.density.toFixed(2)} /km²</p>
+                  <p><strong>Area:</strong> ${(country.landAreaKm / 1000).toFixed(0)}K km²</p>
+                  <p><strong>Growth Rate:</strong> ${(country.growthRate * 100).toFixed(2)}%</p>
+                  <p><strong>World Share:</strong> ${(country.worldPercentage * 100).toFixed(2)}%</p>
+                </div>
+              `;
+
+              layer.bindPopup(popupContent);
+              layer.on('click', () => {
+                onCountrySelect(country);
+              });
+
+              layer.on('mouseover', function () {
+                this.setStyle({
+                  weight: 2,
+                  color: '#4ade80',
+                  fillOpacity: 0.95,
+                });
+                this.bringToFront();
+              });
+
+              layer.on('mouseout', function () {
+                this.setStyle({
+                  weight: 1,
+                  color: '#1a1a1a',
+                  fillOpacity: 0.85,
+                });
+              });
+            }
+          },
+        }).addTo(map.current);
+      })
+      .catch((err) => console.error('Error loading GeoJSON:', err));
   }, [countries, selectedMetric]);
 
   useEffect(() => {

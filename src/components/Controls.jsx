@@ -2,10 +2,11 @@ import React from 'react';
 
 const Controls = ({ selectedMetric, onMetricChange, zoom, onZoomChange }) => {
   const metrics = [
-    { id: 'population_density', label: 'Population Density' },
-    { id: 'life_expectancy', label: 'Life Expectancy' },
-    { id: 'population', label: 'Total Population' },
-    { id: 'area', label: 'Land Area' },
+    { id: 'density', label: 'Population Density (people/km²)' },
+    { id: 'pop2025', label: 'Population 2025' },
+    { id: 'pop2050', label: 'Population 2050 (Projected)' },
+    { id: 'growthRate', label: 'Growth Rate' },
+    { id: 'worldPercentage', label: 'World Percentage' },
   ];
 
   return (

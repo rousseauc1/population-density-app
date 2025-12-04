@@ -90,6 +90,91 @@ export const getCountryGeoJSON = () => {
           ],
         },
       },
+      // Indonesia
+      {
+        type: 'Feature',
+        properties: { iso_a3: 'IDN', name: 'Indonesia' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [95, 11],
+              [95, -11],
+              [141, -11],
+              [141, 11],
+              [95, 11],
+            ],
+          ],
+        },
+      },
+      // Pakistan
+      {
+        type: 'Feature',
+        properties: { iso_a3: 'PAK', name: 'Pakistan' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [61, 37],
+              [61, 24],
+              [77, 24],
+              [77, 37],
+              [61, 37],
+            ],
+          ],
+        },
+      },
+      // Bangladesh
+      {
+        type: 'Feature',
+        properties: { iso_a3: 'BGD', name: 'Bangladesh' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [88, 27],
+              [88, 21],
+              [93, 21],
+              [93, 27],
+              [88, 27],
+            ],
+          ],
+        },
+      },
+      // Nigeria
+      {
+        type: 'Feature',
+        properties: { iso_a3: 'NGA', name: 'Nigeria' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [2, 14],
+              [2, 4],
+              [15, 4],
+              [15, 14],
+              [2, 14],
+            ],
+          ],
+        },
+      },
+      // Mexico
+      {
+        type: 'Feature',
+        properties: { iso_a3: 'MEX', name: 'Mexico' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [-117, 33],
+              [-117, 14],
+              [-87, 14],
+              [-87, 33],
+              [-117, 33],
+            ],
+          ],
+        },
+      },
       // Japan
       {
         type: 'Feature',
@@ -107,70 +192,70 @@ export const getCountryGeoJSON = () => {
           ],
         },
       },
-      // Germany
+      // Ethiopia
       {
         type: 'Feature',
-        properties: { iso_a3: 'DEU', name: 'Germany' },
+        properties: { iso_a3: 'ETH', name: 'Ethiopia' },
         geometry: {
           type: 'Polygon',
           coordinates: [
             [
-              [6, 56],
-              [6, 47],
-              [16, 47],
-              [16, 56],
-              [6, 56],
+              [33, 15],
+              [33, 3],
+              [48, 3],
+              [48, 15],
+              [33, 15],
             ],
           ],
         },
       },
-      // United Kingdom
+      // Philippines
       {
         type: 'Feature',
-        properties: { iso_a3: 'GBR', name: 'United Kingdom' },
+        properties: { iso_a3: 'PHL', name: 'Philippines' },
         geometry: {
           type: 'Polygon',
           coordinates: [
             [
-              [-8, 59],
-              [-8, 50],
-              [2, 50],
-              [2, 59],
-              [-8, 59],
+              [117, 20],
+              [117, 5],
+              [127, 5],
+              [127, 20],
+              [117, 20],
             ],
           ],
         },
       },
-      // France
+      // Egypt
       {
         type: 'Feature',
-        properties: { iso_a3: 'FRA', name: 'France' },
+        properties: { iso_a3: 'EGY', name: 'Egypt' },
         geometry: {
           type: 'Polygon',
           coordinates: [
             [
-              [-8, 51],
-              [-8, 41],
-              [8, 41],
-              [8, 51],
-              [-8, 51],
+              [25, 32],
+              [25, 22],
+              [35, 22],
+              [35, 32],
+              [25, 32],
             ],
           ],
         },
       },
-      // Australia
+      // DR Congo
       {
         type: 'Feature',
-        properties: { iso_a3: 'AUS', name: 'Australia' },
+        properties: { iso_a3: 'COD', name: 'DR Congo' },
         geometry: {
           type: 'Polygon',
           coordinates: [
             [
-              [113, -10],
-              [113, -44],
-              [154, -44],
-              [154, -10],
-              [113, -10],
+              [12, 5],
+              [12, -14],
+              [31, -14],
+              [31, 5],
+              [12, 5],
             ],
           ],
         },
