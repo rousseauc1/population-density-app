@@ -2,102 +2,16 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Country from './models/Country.js';
-import Region from './models/Region.js';
-import EconomicIndicator from './models/EconomicIndicator.js';
+import EconomicIndicator from '../models/EconomicIndicator.js';
+import Country from '../models/Country.js';
 
-// Load .env from parent directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/global_population';
 
-// Sample regions data
-const sampleRegions = [
-  {
-    name: 'Asia',
-    type: 'continent',
-    countries: ['IND', 'CHN', 'IDN', 'PAK', 'BGD', 'JPN', 'PHL', 'VNM', 'THA', 'MYS', 'KOR', 'TUR', 'IRN', 'SAU', 'UZB'],
-    totalPopulation2025: 0, // Will be calculated
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-  {
-    name: 'Africa',
-    type: 'continent',
-    countries: ['NGA', 'ETH', 'EGY', 'COD', 'TZA', 'ZAF', 'KEN', 'UGA', 'SDN', 'DZA', 'AGO', 'MOZ', 'GHA', 'CMR', 'CIV'],
-    totalPopulation2025: 0,
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-  {
-    name: 'Americas',
-    type: 'continent',
-    countries: ['USA', 'BRA', 'MEX', 'ARG', 'COL', 'CAN', 'PER', 'CHL', 'ECU', 'BOL', 'VEN', 'GTM', 'CUB'],
-    totalPopulation2025: 0,
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-  {
-    name: 'Europe',
-    type: 'continent',
-    countries: ['RUS', 'DEU', 'GBR', 'FRA', 'ITA', 'ESP', 'UKR', 'POL', 'ROU', 'NLD', 'BEL', 'GRC', 'PRT', 'CZE', 'HUN'],
-    totalPopulation2025: 0,
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-  {
-    name: 'Oceania',
-    type: 'continent',
-    countries: ['AUS', 'NZL', 'PNG', 'FJI', 'SLB'],
-    totalPopulation2025: 0,
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-  {
-    name: 'South Asia',
-    type: 'subregion',
-    countries: ['IND', 'PAK', 'BGD', 'AFG', 'LKA', 'NPL', 'BTN'],
-    totalPopulation2025: 0,
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-  {
-    name: 'East Asia',
-    type: 'subregion',
-    countries: ['CHN', 'JPN', 'KOR', 'TWN', 'HKG', 'MNG', 'PRK'],
-    totalPopulation2025: 0,
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-  {
-    name: 'Sub-Saharan Africa',
-    type: 'subregion',
-    countries: ['NGA', 'ETH', 'COD', 'TZA', 'KEN', 'UGA', 'GHA', 'CMR', 'CIV', 'MOZ', 'AGO', 'ZAF'],
-    totalPopulation2025: 0,
-    totalPopulation2050: 0,
-    averageDensity: 0,
-    averageGrowthRate: 0,
-    totalArea: 0,
-  },
-];
-
-// Sample economic indicators data
+// Sample economic indicators data (from seed.js)
 const sampleEconomicIndicators = [
   // High-income countries
   { countryCode: 'USA', year: 2024, gdpPerCapita: 76398, gdpTotal: 26.95, humanDevelopmentIndex: 0.921, giniCoefficient: 0.415, unemploymentRate: 3.7, urbanizationRate: 82.9, lifeExpectancy: 76.3, literacyRate: 99.0 },
@@ -139,75 +53,68 @@ const sampleEconomicIndicators = [
   { countryCode: 'UGA', year: 2024, gdpPerCapita: 915, gdpTotal: 0.04, humanDevelopmentIndex: 0.525, giniCoefficient: 0.426, unemploymentRate: 2.9, urbanizationRate: 26.8, lifeExpectancy: 63.4, literacyRate: 76.5 },
 ];
 
-const seedDatabase = async () => {
+async function importEconomicData() {
   try {
     await mongoose.connect(MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-
-    console.log('Connected to MongoDB');
-    console.log(`Using database: ${MONGODB_URI}`);
-
-    const db = mongoose.connection.db;
     
-    // Check if collections exist
-    const collections = await db.listCollections().toArray();
-    const hasCountryStats = collections.some(c => c.name === 'country_stats_2025');
-    const hasRegions = collections.some(c => c.name === 'regions');
-    const hasEconomicIndicators = collections.some(c => c.name === 'economic_indicators');
+    console.log('Connected to MongoDB\n');
+    console.log('📊 Importing Economic Indicators Data...\n');
     
-    // Seed Regions
-    if (!hasRegions) {
-      console.log('Seeding regions...');
-      await Region.deleteMany({});
-      await Region.insertMany(sampleRegions);
-      console.log(`✓ Seeded ${sampleRegions.length} regions`);
-    } else {
-      const count = await Region.countDocuments();
-      console.log(`✓ Regions collection exists with ${count} documents`);
+    // Check if countries exist
+    const countryCount = await Country.countDocuments();
+    if (countryCount === 0) {
+      console.log('⚠ Warning: No countries found in database.');
+      console.log('   Run "npm run seed" first to populate countries.\n');
     }
-
-    // Seed Economic Indicators
-    if (!hasEconomicIndicators) {
-      console.log('Seeding economic indicators...');
-      await EconomicIndicator.deleteMany({});
-      await EconomicIndicator.insertMany(sampleEconomicIndicators);
-      console.log(`✓ Seeded ${sampleEconomicIndicators.length} economic indicators`);
-    } else {
-      const count = await EconomicIndicator.countDocuments();
-      console.log(`✓ Economic indicators collection exists with ${count} documents`);
+    
+    // Clear existing economic indicators
+    const deleted = await EconomicIndicator.deleteMany({});
+    console.log(`✓ Cleared ${deleted.deletedCount} existing economic indicators`);
+    
+    // Import sample data
+    await EconomicIndicator.insertMany(sampleEconomicIndicators);
+    console.log(`✓ Imported ${sampleEconomicIndicators.length} economic indicators\n`);
+    
+    // Show summary
+    const summary = await EconomicIndicator.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          countries: { $addToSet: '$countryCode' },
+        },
+      },
+    ]);
+    
+    if (summary.length > 0) {
+      console.log('📈 Summary:');
+      console.log(`   Total indicators: ${summary[0].total}`);
+      console.log(`   Countries covered: ${summary[0].countries.length}`);
+      console.log(`   Year: 2024\n`);
     }
-
-    // Check Countries
-    if (hasCountryStats) {
-      const collection = db.collection('country_stats_2025');
-      const count = await collection.countDocuments();
-      console.log(`✓ Found existing collection 'country_stats_2025' with ${count} documents`);
-    } else {
-      console.log('⚠ Warning: country_stats_2025 collection not found');
-      console.log('Please import your country data manually or ensure MongoDB is properly set up');
-    }
-
-    console.log('\n✓ Database seeding completed!');
-    console.log('\nCollections:');
-    console.log('  - country_stats_2025 (countries)');
-    console.log('  - regions');
-    console.log('  - economic_indicators');
-    console.log('\nYou can now use the analytics endpoints:');
-    console.log('  GET /api/analytics/high-growth-with-economics');
-    console.log('  GET /api/analytics/regional-analysis');
-    console.log('  GET /api/analytics/overcrowding-analysis');
-    console.log('  GET /api/analytics/projection-by-development');
-    console.log('  GET /api/analytics/economic-population-correlation');
-    console.log('  GET /api/analytics/regional-comparison');
-
+    
+    console.log('✅ Economic indicators imported successfully!');
+    console.log('\nYou can now test your queries:');
+    console.log('   GET /api/analytics/economic-population-correlation');
+    console.log('   GET /api/analytics/overcrowding-analysis');
+    console.log('   GET /api/analytics/projection-by-development');
+    
     await mongoose.disconnect();
     console.log('\nDatabase connection closed.');
+    
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.error('Error importing economic data:', error);
     process.exit(1);
   }
-};
+}
 
-seedDatabase();
+// Run if called directly
+if (process.argv[1] && process.argv[1].endsWith('importEconomicData.js')) {
+  importEconomicData();
+}
+
+export { importEconomicData, sampleEconomicIndicators };
+

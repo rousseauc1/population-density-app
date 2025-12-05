@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MapComponent from './components/MapComponent';
 import Sidebar from './components/Sidebar';
 import Controls from './components/Controls';
+import AnalyticsPanel from './components/AnalyticsPanel';
 import axios from 'axios';
 
 function App() {
@@ -10,6 +11,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [zoom, setZoom] = useState(2);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => {
     fetchCountriesData();
@@ -51,6 +53,7 @@ function App() {
           onMetricChange={setSelectedMetric}
           zoom={zoom}
           onZoomChange={setZoom}
+          onShowAnalytics={() => setShowAnalytics(true)}
         />
 
         <div className="flex-1">
@@ -72,6 +75,11 @@ function App() {
           )}
         </div>
       </div>
+
+      <AnalyticsPanel
+        isOpen={showAnalytics}
+        onClose={() => setShowAnalytics(false)}
+      />
     </div>
   );
 }
