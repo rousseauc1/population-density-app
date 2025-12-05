@@ -14,6 +14,7 @@ const MapComponent = ({
   const map = useRef(null);
   const tooltipRef = useRef(null);
   const countryMarkers = useRef(new Map());
+  const countryLayers = useRef(new Map());
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -40,19 +41,28 @@ const MapComponent = ({
     };
   }, []);
 
-  // Create markers at country centroids
+  // Create clickable country boundaries and markers
   useEffect(() => {
     if (!map.current || countries.length === 0) return;
 
-    // Clear existing markers
+    // Clear existing markers and layers
     countryMarkers.current.forEach((marker) => map.current.removeLayer(marker));
     countryMarkers.current.clear();
+    countryLayers.current.forEach((layer) => map.current.removeLayer(layer));
+    countryLayers.current.clear();
+
+    // Create a lookup map for quick country data access
+    const countryDataMap = new Map();
+    countries.forEach((country) => {
+      countryDataMap.set(country.cca3, country);
+    });
 
     // Country centroids (approximate lat/lng for each country code)
     const countryCentroids = {
       'IND': [20.5937, 78.9629],
       'CHN': [35.8617, 104.1954],
       'USA': [37.0902, -95.7129],
+      'CAN': [56.1304, -106.3468],
       'IDN': [-0.7893, 113.9213],
       'PAK': [30.3753, 69.3451],
       'BRA': [-14.2350, -51.9253],
@@ -245,6 +255,48 @@ const MapComponent = ({
       'SSD': [6.8770, 31.3070],
     };
 
+    // Add click handler to map for reverse geocoding
+    const handleMapClick = async (e) => {
+      const { lat, lng } = e.latlng;
+      
+      // Try to find the closest country by checking centroids
+      let closestCountry = null;
+      let minDistance = Infinity;
+
+      countries.forEach((country) => {
+        const centroid = countryCentroids[country.cca3];
+        if (!centroid) return;
+
+        const [centroidLat, centroidLng] = centroid;
+        // Calculate approximate distance (simple Euclidean distance)
+        const distance = Math.sqrt(
+          Math.pow(lat - centroidLat, 2) + Math.pow(lng - centroidLng, 2)
+        );
+
+        // Use a reasonable threshold (about 10 degrees, roughly 1000km)
+        if (distance < 10 && distance < minDistance) {
+          minDistance = distance;
+          closestCountry = country;
+        }
+      });
+
+      if (closestCountry) {
+        onCountrySelect(closestCountry);
+        // Find and open the marker popup
+        const marker = countryMarkers.current.get(closestCountry.cca3);
+        if (marker) {
+          marker.openPopup();
+        }
+      }
+    };
+
+    // Add click handler to map
+    map.current.off('click', handleMapClick); // Remove existing handler if any
+    map.current.on('click', handleMapClick);
+
+    // Store clickable areas for zoom updates
+    const clickableAreas = [];
+
     countries.forEach((country) => {
       const centroid = countryCentroids[country.cca3];
       if (!centroid) return;
@@ -263,6 +315,26 @@ const MapComponent = ({
         fillOpacity: 0.7,
       }).addTo(map.current);
 
+      // Create an invisible larger clickable area around the marker
+      // This makes it easier to click smaller countries
+      // Radius scales with zoom - larger at lower zoom levels
+      const currentZoom = map.current.getZoom();
+      const baseRadius = 100000; // 100km base radius
+      const zoomFactor = Math.max(1, 4 - currentZoom / 3); // Larger area when zoomed out
+      const clickableRadius = baseRadius * zoomFactor;
+      
+      const clickableArea = L.circle([lat, lng], {
+        radius: clickableRadius,
+        fillColor: 'transparent',
+        color: 'transparent',
+        weight: 0,
+        fillOpacity: 0,
+        interactive: true,
+      }).addTo(map.current);
+      
+      // Store for zoom updates (will be handled outside the loop)
+      clickableAreas.push({ area: clickableArea, baseRadius });
+
       // Add popup on click
       const popupContent = `
         <div class="bg-gray-800 text-white p-3 rounded shadow-lg text-sm">
@@ -275,15 +347,22 @@ const MapComponent = ({
       `;
 
       marker.bindPopup(popupContent);
-      marker.on('click', () => {
+      
+      const handleClick = () => {
         onCountrySelect(country);
-      });
+        marker.openPopup();
+      };
+
+      marker.on('click', handleClick);
+      clickableArea.on('click', handleClick);
 
       marker.on('mouseover', function () {
         this.setStyle({
           fillOpacity: 0.9,
           weight: 2,
         });
+        // Change cursor to pointer
+        map.current.getContainer().style.cursor = 'pointer';
       });
 
       marker.on('mouseout', function () {
@@ -291,10 +370,40 @@ const MapComponent = ({
           fillOpacity: 0.7,
           weight: 1,
         });
+        map.current.getContainer().style.cursor = '';
+      });
+
+      clickableArea.on('mouseover', function () {
+        marker.setStyle({
+          fillOpacity: 0.9,
+          weight: 2,
+        });
+        map.current.getContainer().style.cursor = 'pointer';
+      });
+
+      clickableArea.on('mouseout', function () {
+        marker.setStyle({
+          fillOpacity: 0.7,
+          weight: 1,
+        });
+        map.current.getContainer().style.cursor = '';
       });
 
       countryMarkers.current.set(country.cca3, marker);
+      countryLayers.current.set(country.cca3, clickableArea);
     });
+
+    // Update all clickable areas when zoom changes
+    const updateClickableAreas = () => {
+      const currentZoom = map.current.getZoom();
+      const zoomFactor = Math.max(1, 4 - currentZoom / 3);
+      clickableAreas.forEach(({ area, baseRadius }) => {
+        area.setRadius(baseRadius * zoomFactor);
+      });
+    };
+
+    map.current.off('zoomend', updateClickableAreas);
+    map.current.on('zoomend', updateClickableAreas);
   }, [countries, selectedMetric, onCountrySelect]);
 
   useEffect(() => {
