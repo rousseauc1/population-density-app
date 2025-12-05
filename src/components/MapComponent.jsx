@@ -20,7 +20,12 @@ const MapComponent = ({
 
     // Initialize map
     if (!map.current) {
-      map.current = L.map(mapContainer.current).setView([20, 0], 2);
+      map.current = L.map(mapContainer.current, {
+        minZoom: 2,
+        maxZoom: 20,
+        maxBounds: [[-85, -Infinity], [85, Infinity]],
+        maxBoundsViscosity: 1.0,
+      }).setView([20, 0], 2);
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution:
