@@ -21,7 +21,13 @@ const MapComponent = ({
 
     // Initialize map
     if (!map.current) {
-      map.current = L.map(mapContainer.current).setView([20, 0], 2);
+      map.current = L.map(mapContainer.current, {
+        minZoom: 2,
+        maxZoom: 20,
+        maxBounds: [[-85, -Infinity], [85, Infinity]],
+        maxBoundsViscosity: 1.0,
+        zoomControl: false,
+      }).setView([20, 0], 2);
 
       // Use a tile layer that shows country boundaries with labels
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -430,7 +436,7 @@ const MapComponent = ({
       <div ref={mapContainer} className="w-full h-full" />
 
       {/* Custom Controls */}
-      <div className="absolute bottom-6 left-6 bg-gray-800 rounded-lg shadow-lg p-2 border border-gray-700">
+      <div className="absolute bottom-6 left-6 bg-gray-800 rounded-lg shadow-lg p-2 border border-gray-700" style={{ zIndex: 1000, pointerEvents: 'auto' }}>
         <button
           onClick={handleZoomIn}
           className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold mb-2 transition"
@@ -456,7 +462,7 @@ const MapComponent = ({
       </div>
 
       {/* Legend */}
-      <div className="absolute top-6 right-6 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700 max-w-xs">
+      <div className="absolute top-6 right-6 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700 max-w-xs" style={{ zIndex: 1000, pointerEvents: 'auto' }}>
         <h3 className="text-white font-bold mb-3">Heat Scale</h3>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
