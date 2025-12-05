@@ -5,6 +5,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import countriesRouter from './routes/countries.js';
+import regionsRouter from './routes/regions.js';
+import economicIndicatorsRouter from './routes/economicIndicators.js';
+import analyticsRouter from './routes/analytics.js';
 
 // Load .env from parent directory
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +34,9 @@ mongoose
 
 // Routes
 app.use('/api/countries', countriesRouter);
+app.use('/api/regions', regionsRouter);
+app.use('/api/economic-indicators', economicIndicatorsRouter);
+app.use('/api/analytics', analyticsRouter);
 
 // Health check
 app.get('/health', (req, res) => {
