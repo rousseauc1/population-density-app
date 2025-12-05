@@ -19,10 +19,11 @@ function App() {
     try {
       setLoading(true);
       const response = await axios.get('/api/countries');
+      console.log(`Successfully fetched ${response.data.length} countries`);
       setCountries(response.data);
     } catch (error) {
       console.error('Error fetching countries data:', error);
-      // Fallback data for demonstration
+      console.error('API request failed - make sure backend is running on port 5000');
       setCountries(getDemoData());
     } finally {
       setLoading(false);
@@ -30,119 +31,10 @@ function App() {
   };
 
   const getDemoData = () => {
-    // Demo data for testing without backend
-    return [
-      {
-        cca3: 'IND',
-        country: 'India',
-        pop2025: 1463870000,
-        pop2050: 1679590000,
-        landAreaKm: 2973190,
-        density: 492.3567,
-        growthRate: 0.0089,
-        worldPercentage: 0.1829,
-        rank: 1,
-      },
-      {
-        cca3: 'CHN',
-        country: 'China',
-        pop2025: 1425887000,
-        pop2050: 1382000000,
-        landAreaKm: 9326400,
-        density: 152.8922,
-        growthRate: -0.0027,
-        worldPercentage: 0.1784,
-        rank: 2,
-      },
-      {
-        cca3: 'USA',
-        country: 'United States',
-        pop2025: 346570000,
-        pop2050: 371621000,
-        landAreaKm: 9148220,
-        density: 37.8946,
-        growthRate: 0.0054,
-        worldPercentage: 0.0434,
-        rank: 3,
-      },
-      {
-        cca3: 'IDN',
-        country: 'Indonesia',
-        pop2025: 277534000,
-        pop2050: 319866000,
-        landAreaKm: 1812221,
-        density: 153.1198,
-        growthRate: 0.0071,
-        worldPercentage: 0.0347,
-        rank: 4,
-      },
-      {
-        cca3: 'PAK',
-        country: 'Pakistan',
-        pop2025: 240485000,
-        pop2050: 308745000,
-        landAreaKm: 770875,
-        density: 311.8876,
-        growthRate: 0.0196,
-        worldPercentage: 0.0301,
-        rank: 5,
-      },
-      {
-        cca3: 'BRA',
-        country: 'Brazil',
-        pop2025: 215313000,
-        pop2050: 228033000,
-        landAreaKm: 8358140,
-        density: 25.7480,
-        growthRate: 0.0062,
-        worldPercentage: 0.0270,
-        rank: 6,
-      },
-      {
-        cca3: 'NGA',
-        country: 'Nigeria',
-        pop2025: 223804000,
-        pop2050: 401315000,
-        landAreaKm: 910768,
-        density: 245.8762,
-        growthRate: 0.0254,
-        worldPercentage: 0.0280,
-        rank: 7,
-      },
-      {
-        cca3: 'BGD',
-        country: 'Bangladesh',
-        pop2025: 172953000,
-        pop2050: 184347000,
-        landAreaKm: 130170,
-        density: 1330.6234,
-        growthRate: 0.0099,
-        worldPercentage: 0.0217,
-        rank: 8,
-      },
-      {
-        cca3: 'RUS',
-        country: 'Russia',
-        pop2025: 144444000,
-        pop2050: 137663000,
-        landAreaKm: 16995800,
-        density: 8.4943,
-        growthRate: -0.0004,
-        worldPercentage: 0.0181,
-        rank: 9,
-      },
-      {
-        cca3: 'MEX',
-        country: 'Mexico',
-        pop2025: 128932000,
-        pop2050: 135355000,
-        landAreaKm: 1943945,
-        density: 66.3497,
-        growthRate: 0.0047,
-        worldPercentage: 0.0162,
-        rank: 10,
-      },
-    ];
+    // Demo data - will be replaced by API data
+    // If API fails, this ensures we still have data to display
+    console.warn('Using demo data - API fetch failed');
+    return [];
   };
 
   return (

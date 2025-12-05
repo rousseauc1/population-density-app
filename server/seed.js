@@ -1,10 +1,14 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Country from './models/Country.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// Load .env from parent directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/population_density';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/global_population';
 
 const sampleCountries = [
   {
@@ -212,25 +216,27 @@ const seedDatabase = async () => {
     });
 
     console.log('Connected to MongoDB');
+    console.log(`Using database: ${MONGODB_URI}`);
 
-    // Clear existing data
-    await Country.deleteMany({});
-    console.log('Cleared existing country data');
-
-    // Insert sample data
-    const result = await Country.insertMany(sampleCountries);
-    console.log(`✓ Successfully seeded ${result.length} countries`);
-
-    // Display inserted data
-    console.log('\nInserted countries:');
-    result.forEach((country) => {
-      console.log(`  - ${country.country} (${country.cca3}): ${country.density.toFixed(2)} people/km²`);
-    });
+    // Get collection stats
+    const db = mongoose.connection.db;
+    const collections = await db.listCollections().toArray();
+    const hasCountryStats = collections.some(c => c.name === 'country_stats_2025');
+    
+    if (hasCountryStats) {
+      const collection = db.collection('country_stats_2025');
+      const count = await collection.countDocuments();
+      console.log(`✓ Found existing collection 'country_stats_2025' with ${count} documents`);
+      console.log('No seeding needed - using existing data');
+    } else {
+      console.log('Warning: country_stats_2025 collection not found');
+      console.log('Please import your data manually or ensure MongoDB is properly set up');
+    }
 
     await mongoose.disconnect();
-    console.log('\nDatabase seeding completed!');
+    console.log('Database check completed!');
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.error('Error checking database:', error);
     process.exit(1);
   }
 };
