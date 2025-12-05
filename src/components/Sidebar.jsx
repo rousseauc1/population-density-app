@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatPopulation } from '../utils/formatPopulation';
 
 const Sidebar = ({ selectedCountry, selectedMetric, countries }) => {
   const metricLabels = {
@@ -13,7 +14,7 @@ const Sidebar = ({ selectedCountry, selectedMetric, countries }) => {
     if (!value && value !== 0) return 'N/A';
 
     if (metric === 'pop2025' || metric === 'pop2050') {
-      return (value / 1000000).toFixed(2) + 'M';
+      return formatPopulation(value);
     }
     if (metric === 'density') {
       return value.toFixed(2) + ' /km²';

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getHeatColor } from '../utils/colorScale';
+import { formatPopulation } from '../utils/formatPopulation';
 
 const MapComponent = ({
   countries,
@@ -24,7 +25,9 @@ const MapComponent = ({
       map.current = L.map(mapContainer.current, {
         minZoom: 2,
         maxZoom: 20,
-        maxBounds: [[-85, -Infinity], [85, Infinity]],
+        // Limit horizontal scrolling to 5 maps total (2 left, center, 2 right)
+        // Each map is 360 degrees, so bounds are -720 to +720 (2 maps each direction from center)
+        maxBounds: [[-85, -720], [85, 720]],
         maxBoundsViscosity: 1.0,
         zoomControl: false,
       }).setView([20, 0], 2);
@@ -288,10 +291,25 @@ const MapComponent = ({
 
       if (closestCountry) {
         onCountrySelect(closestCountry);
-        // Find and open the marker popup
-        const marker = countryMarkers.current.get(closestCountry.cca3);
-        if (marker) {
-          marker.openPopup();
+        // Find and open the marker popup (try to find the one closest to the click)
+        let closestMarker = null;
+        let minMarkerDistance = Infinity;
+        
+        countryMarkers.current.forEach((marker, key) => {
+          if (key.startsWith(closestCountry.cca3 + '_')) {
+            const markerLatLng = marker.getLatLng();
+            const distance = Math.sqrt(
+              Math.pow(lat - markerLatLng.lat, 2) + Math.pow(lng - markerLatLng.lng, 2)
+            );
+            if (distance < minMarkerDistance) {
+              minMarkerDistance = distance;
+              closestMarker = marker;
+            }
+          }
+        });
+        
+        if (closestMarker) {
+          closestMarker.openPopup();
         }
       }
     };
@@ -303,6 +321,10 @@ const MapComponent = ({
     // Store clickable areas for zoom updates
     const clickableAreas = [];
 
+    // Create markers at multiple longitude offsets so they appear when scrolling horizontally
+    // This allows points to appear on all maps as you scroll left and right
+    const longitudeOffsets = [-720, -360, 0, 360, 720];
+    
     countries.forEach((country) => {
       const centroid = countryCentroids[country.cca3];
       if (!centroid) return;
@@ -311,92 +333,119 @@ const MapComponent = ({
       const value = country[selectedMetric];
       const color = getHeatColor(value, selectedMetric, countries);
 
-      // Create a circle marker at the country centroid
-      const marker = L.circleMarker([lat, lng], {
-        radius: Math.min(Math.max(5, value / 50000000), 30), // Size based on selected metric
-        fillColor: color,
-        color: '#1a1a1a',
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.7,
-      }).addTo(map.current);
-
-      // Create an invisible larger clickable area around the marker
-      // This makes it easier to click smaller countries
-      // Radius scales with zoom - larger at lower zoom levels
-      const currentZoom = map.current.getZoom();
-      const baseRadius = 100000; // 100km base radius
-      const zoomFactor = Math.max(1, 4 - currentZoom / 3); // Larger area when zoomed out
-      const clickableRadius = baseRadius * zoomFactor;
-      
-      const clickableArea = L.circle([lat, lng], {
-        radius: clickableRadius,
-        fillColor: 'transparent',
-        color: 'transparent',
-        weight: 0,
-        fillOpacity: 0,
-        interactive: true,
-      }).addTo(map.current);
-      
-      // Store for zoom updates (will be handled outside the loop)
-      clickableAreas.push({ area: clickableArea, baseRadius });
-
-      // Add popup on click
-      const popupContent = `
-        <div class="bg-gray-800 text-white p-3 rounded shadow-lg text-sm">
-          <h3 class="font-bold text-lg mb-2">${country.country}</h3>
-          <p><strong>Population 2025:</strong> ${(country.pop2025 / 1000000).toFixed(2)}M</p>
-          <p><strong>Population 2050:</strong> ${(country.pop2050 / 1000000).toFixed(2)}M</p>
-          <p><strong>Density:</strong> ${country.density.toFixed(2)} /km²</p>
-          <p><strong>Growth Rate:</strong> ${(country.growthRate * 100).toFixed(2)}%</p>
-        </div>
-      `;
-
-      marker.bindPopup(popupContent);
-      
-      const handleClick = () => {
-        onCountrySelect(country);
-        marker.openPopup();
-      };
-
-      marker.on('click', handleClick);
-      clickableArea.on('click', handleClick);
-
-      marker.on('mouseover', function () {
-        this.setStyle({
-          fillOpacity: 0.9,
-          weight: 2,
-        });
-        // Change cursor to pointer
-        map.current.getContainer().style.cursor = 'pointer';
-      });
-
-      marker.on('mouseout', function () {
-        this.setStyle({
-          fillOpacity: 0.7,
+      // Create markers at each longitude offset
+      longitudeOffsets.forEach((lngOffset) => {
+        const offsetLng = lng + lngOffset;
+        
+        // Create a circle marker at the country centroid with longitude offset
+        const marker = L.circleMarker([lat, offsetLng], {
+          radius: Math.min(Math.max(5, value / 50000000), 30), // Size based on selected metric
+          fillColor: color,
+          color: '#1a1a1a',
           weight: 1,
-        });
-        map.current.getContainer().style.cursor = '';
-      });
-
-      clickableArea.on('mouseover', function () {
-        marker.setStyle({
-          fillOpacity: 0.9,
-          weight: 2,
-        });
-        map.current.getContainer().style.cursor = 'pointer';
-      });
-
-      clickableArea.on('mouseout', function () {
-        marker.setStyle({
+          opacity: 1,
           fillOpacity: 0.7,
-          weight: 1,
-        });
-        map.current.getContainer().style.cursor = '';
-      });
+        }).addTo(map.current);
 
-      countryMarkers.current.set(country.cca3, marker);
-      countryLayers.current.set(country.cca3, clickableArea);
+        // Create an invisible larger clickable area around the marker
+        // This makes it easier to click smaller countries
+        // Radius scales with zoom - larger at lower zoom levels
+        const currentZoom = map.current.getZoom();
+        const baseRadius = 100000; // 100km base radius
+        const zoomFactor = Math.max(1, 4 - currentZoom / 3); // Larger area when zoomed out
+        const clickableRadius = baseRadius * zoomFactor;
+        
+        const clickableArea = L.circle([lat, offsetLng], {
+          radius: clickableRadius,
+          fillColor: 'transparent',
+          color: 'transparent',
+          weight: 0,
+          fillOpacity: 0,
+          interactive: true,
+        }).addTo(map.current);
+        
+        // Store for zoom updates (will be handled outside the loop)
+        clickableAreas.push({ area: clickableArea, baseRadius });
+
+        // Add popup on click
+        const popupContent = `
+          <div class="bg-gray-800 text-white p-3 rounded shadow-lg text-sm">
+            <h3 class="font-bold text-lg mb-2">${country.country}</h3>
+            <p><strong>Population 2025:</strong> ${formatPopulation(country.pop2025)}</p>
+            <p><strong>Population 2050:</strong> ${formatPopulation(country.pop2050)}</p>
+            <p><strong>Density:</strong> ${country.density.toFixed(2)} /km²</p>
+            <p><strong>Growth Rate:</strong> ${(country.growthRate * 100).toFixed(2)}%</p>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        
+        const handleClick = () => {
+          onCountrySelect(country);
+          // Open popup on the clicked marker (only one popup should be open at a time)
+          marker.openPopup();
+        };
+
+        marker.on('click', handleClick);
+        clickableArea.on('click', handleClick);
+
+        marker.on('mouseover', function () {
+          // Highlight all markers for this country (all longitude offsets)
+          countryMarkers.current.forEach((m, key) => {
+            if (key.startsWith(country.cca3 + '_')) {
+              m.setStyle({
+                fillOpacity: 0.9,
+                weight: 2,
+              });
+            }
+          });
+          map.current.getContainer().style.cursor = 'pointer';
+        });
+
+        marker.on('mouseout', function () {
+          // Reset all markers for this country
+          countryMarkers.current.forEach((m, key) => {
+            if (key.startsWith(country.cca3 + '_')) {
+              m.setStyle({
+                fillOpacity: 0.7,
+                weight: 1,
+              });
+            }
+          });
+          map.current.getContainer().style.cursor = '';
+        });
+
+        clickableArea.on('mouseover', function () {
+          // Highlight all markers for this country (all longitude offsets)
+          countryMarkers.current.forEach((m, key) => {
+            if (key.startsWith(country.cca3 + '_')) {
+              m.setStyle({
+                fillOpacity: 0.9,
+                weight: 2,
+              });
+            }
+          });
+          map.current.getContainer().style.cursor = 'pointer';
+        });
+
+        clickableArea.on('mouseout', function () {
+          // Reset all markers for this country
+          countryMarkers.current.forEach((m, key) => {
+            if (key.startsWith(country.cca3 + '_')) {
+              m.setStyle({
+                fillOpacity: 0.7,
+                weight: 1,
+              });
+            }
+          });
+          map.current.getContainer().style.cursor = '';
+        });
+
+        // Store markers with a unique key that includes the offset
+        const markerKey = `${country.cca3}_${lngOffset}`;
+        countryMarkers.current.set(markerKey, marker);
+        countryLayers.current.set(markerKey, clickableArea);
+      });
     });
 
     // Update all clickable areas when zoom changes
