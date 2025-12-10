@@ -12,62 +12,55 @@ const router = express.Router();
  */
 router.get('/high-growth-with-economics', async (req, res) => {
   try {
-    const result = await Country.aggregate([
-      // Calculate average growth rate
+    // First, calculate average growth rate
+    const avgResult = await Country.aggregate([
       {
         $group: {
           _id: null,
           avgGrowthRate: { $avg: '$growthRate' },
         },
       },
-      // Find countries above average
+    ]);
+    
+    const avgGrowthRate = avgResult[0]?.avgGrowthRate || 0;
+
+    // Then find countries above average and join with economic data
+    const result = await Country.aggregate([
+      {
+        $match: {
+          growthRate: { $gt: avgGrowthRate },
+        },
+      },
       {
         $lookup: {
-          from: 'countries',
+          from: 'economic_indicators',
+          localField: 'cca3',
+          foreignField: 'countryCode',
+          as: 'economicData',
           pipeline: [
-            {
-              $match: {
-                growthRate: { $gt: '$avgGrowthRate' },
-              },
-            },
-            {
-              $lookup: {
-                from: 'economic_indicators',
-                localField: 'cca3',
-                foreignField: 'countryCode',
-                as: 'economicData',
-                pipeline: [
-                  { $match: { year: 2024 } },
-                  { $limit: 1 },
-                ],
-              },
-            },
-            {
-              $project: {
-                country: 1,
-                cca3: 1,
-                growthRate: 1,
-                pop2025: 1,
-                pop2050: 1,
-                economicData: { $arrayElemAt: ['$economicData', 0] },
-              },
-            },
-            { $sort: { growthRate: -1 } },
-            { $limit: 20 },
+            { $sort: { year: -1 } }, // use most recent economic data available
+            { $limit: 1 },
           ],
-          as: 'highGrowthCountries',
         },
       },
       {
         $project: {
-          _id: 0,
-          avgGrowthRate: 1,
-          highGrowthCountries: 1,
+          country: 1,
+          cca3: 1,
+          growthRate: 1,
+          pop2025: 1,
+          pop2050: 1,
+          economicData: { $arrayElemAt: ['$economicData', 0] },
         },
       },
+      { $sort: { growthRate: -1 } },
+      { $limit: 20 },
     ]);
 
-    res.json(result[0] || {});
+    res.json({
+      avgGrowthRate,
+      highGrowthCountries: result,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -98,7 +91,17 @@ router.get('/regional-analysis', async (req, res) => {
                 $expr: {
                   $in: ['$countryCode', '$$countryCodes'],
                 },
-                year: 2024,
+              },
+            },
+            { $sort: { countryCode: 1, year: -1 } },
+            {
+              $group: {
+                _id: '$countryCode',
+                year: { $first: '$year' },
+                gdpPerCapita: { $first: '$gdpPerCapita' },
+                gdpTotal: { $first: '$gdpTotal' },
+                lifeExpectancy: { $first: '$lifeExpectancy' },
+                urbanizationRate: { $first: '$urbanizationRate' },
               },
             },
           ],
@@ -123,16 +126,40 @@ router.get('/regional-analysis', async (req, res) => {
             $avg: '$countryData.growthRate',
           },
           avgGDPPerCapita: {
-            $avg: '$economicData.gdpPerCapita',
-          },
-          avgHDI: {
-            $avg: '$economicData.humanDevelopmentIndex',
+            $avg: {
+              $filter: {
+                input: '$economicData.gdpPerCapita',
+                as: 'g',
+                cond: { $ne: ['$$g', null] },
+              },
+            },
           },
           avgLifeExpectancy: {
-            $avg: '$economicData.lifeExpectancy',
+            $avg: {
+              $filter: {
+                input: '$economicData.lifeExpectancy',
+                as: 'l',
+                cond: { $ne: ['$$l', null] },
+              },
+            },
+          },
+          avgUrbanization: {
+            $avg: {
+              $filter: {
+                input: '$economicData.urbanizationRate',
+                as: 'u',
+                cond: { $ne: ['$$u', null] },
+              },
+            },
           },
           totalGDP: {
-            $sum: '$economicData.gdpTotal',
+            $sum: {
+              $filter: {
+                input: '$economicData.gdpTotal',
+                as: 't',
+                cond: { $ne: ['$$t', null] },
+              },
+            },
           },
           projectedGrowth: {
             $subtract: [
@@ -178,11 +205,15 @@ router.get('/overcrowding-analysis', async (req, res) => {
         },
       },
       {
+        $addFields: {
+          economicData: { $arrayElemAt: ['$economicData', 0] },
+        },
+      },
+      {
         $match: {
           $or: [
             { 'economicData.gdpPerCapita': { $lt: 5000 } },
-            { 'economicData.humanDevelopmentIndex': { $lt: 0.7 } },
-            { 'economicData': { $size: 0 } }, // No economic data
+            { 'economicData': null }, // No economic data
           ],
         },
       },
@@ -192,33 +223,39 @@ router.get('/overcrowding-analysis', async (req, res) => {
           cca3: 1,
           density: 1,
           pop2025: 1,
+          pop2050: 1,
           growthRate: 1,
+          worldPercentage: 1,
+          area: 1,
+          landAreaKm: 1,
+          // Primary economic indicators
           gdpPerCapita: {
-            $ifNull: [
-              { $arrayElemAt: ['$economicData.gdpPerCapita', 0] },
-              'N/A',
-            ],
-          },
-          hdi: {
-            $ifNull: [
-              { $arrayElemAt: ['$economicData.humanDevelopmentIndex', 0] },
-              'N/A',
-            ],
+            $ifNull: ['$economicData.gdpPerCapita', null],
           },
           lifeExpectancy: {
-            $ifNull: [
-              { $arrayElemAt: ['$economicData.lifeExpectancy', 0] },
-              'N/A',
-            ],
+            $ifNull: ['$economicData.lifeExpectancy', null],
+          },
+          // Additional economic metrics (shown when primary ones are missing)
+          gdpTotal: {
+            $ifNull: ['$economicData.gdpTotal', null],
+          },
+          giniCoefficient: {
+            $ifNull: ['$economicData.giniCoefficient', null],
+          },
+          unemploymentRate: {
+            $ifNull: ['$economicData.unemploymentRate', null],
+          },
+          urbanizationRate: {
+            $ifNull: ['$economicData.urbanizationRate', null],
+          },
+          literacyRate: {
+            $ifNull: ['$economicData.literacyRate', null],
           },
           overcrowdingIndex: {
             $divide: [
               '$density',
               {
-                $ifNull: [
-                  { $arrayElemAt: ['$economicData.gdpPerCapita', 0] },
-                  1,
-                ],
+                $ifNull: ['$economicData.gdpPerCapita', 1],
               },
             ],
           },
@@ -239,24 +276,12 @@ router.get('/overcrowding-analysis', async (req, res) => {
 });
 
 /**
- * QUERY 4: Population projection trends by economic development level
- * Demonstrates: $lookup, $group, $bucket (categorization), $project
+ * QUERY 4: Population projection movers (top gainers / decliners)
+ * Demonstrates: $project with calculations, $group, $sortArray slicing
  */
 router.get('/projection-by-development', async (req, res) => {
   try {
     const result = await Country.aggregate([
-      {
-        $lookup: {
-          from: 'economic_indicators',
-          localField: 'cca3',
-          foreignField: 'countryCode',
-          as: 'economicData',
-          pipeline: [
-            { $match: { year: 2024 } },
-            { $limit: 1 },
-          ],
-        },
-      },
       {
         $project: {
           country: 1,
@@ -264,67 +289,44 @@ router.get('/projection-by-development', async (req, res) => {
           pop2025: 1,
           pop2050: 1,
           growthRate: 1,
-          hdi: { $arrayElemAt: ['$economicData.humanDevelopmentIndex', 0] },
-          gdpPerCapita: { $arrayElemAt: ['$economicData.gdpPerCapita', 0] },
-          populationChange: {
-            $subtract: ['$pop2050', '$pop2025'],
-          },
+          density: 1,
+          worldPercentage: 1,
+          change: { $subtract: ['$pop2050', '$pop2025'] },
           percentChange: {
-            $multiply: [
-              {
-                $divide: [
-                  { $subtract: ['$pop2050', '$pop2025'] },
-                  '$pop2025',
+            $cond: {
+              if: { $gt: ['$pop2025', 0] },
+              then: {
+                $multiply: [
+                  { $divide: [{ $subtract: ['$pop2050', '$pop2025'] }, '$pop2025'] },
+                  100,
                 ],
               },
-              100,
-            ],
+              else: null,
+            },
           },
         },
       },
       {
-        $bucket: {
-          groupBy: '$hdi',
-          boundaries: [0, 0.5, 0.7, 0.8, 1.0],
-          default: 'Unknown',
-          output: {
-            count: { $sum: 1 },
-            avgGrowthRate: { $avg: '$growthRate' },
-            avgPercentChange: { $avg: '$percentChange' },
-            totalPop2025: { $sum: '$pop2025' },
-            totalPop2050: { $sum: '$pop2050' },
-            countries: {
-              $push: {
-                name: '$country',
-                change: '$percentChange',
-                growthRate: '$growthRate',
-              },
-            },
-          },
+        $group: {
+          _id: null,
+          countries: { $push: '$$ROOT' },
+          avgGrowthRate: { $avg: '$growthRate' },
+          avgPercentChange: { $avg: '$percentChange' },
+          totalPop2025: { $sum: '$pop2025' },
+          totalPop2050: { $sum: '$pop2050' },
         },
       },
       {
         $project: {
-          developmentLevel: {
-            $switch: {
-              branches: [
-                { case: { $eq: ['$_id', 0] }, then: 'Low (0-0.5)' },
-                { case: { $eq: ['$_id', 0.5] }, then: 'Medium (0.5-0.7)' },
-                { case: { $eq: ['$_id', 0.7] }, then: 'High (0.7-0.8)' },
-                { case: { $eq: ['$_id', 0.8] }, then: 'Very High (0.8-1.0)' },
-              ],
-              default: 'Unknown',
-            },
+          _id: 0,
+          summary: {
+            avgGrowthRate: { $round: ['$avgGrowthRate', 4] },
+            avgPercentChange: { $round: ['$avgPercentChange', 2] },
+            totalPop2025: '$totalPop2025',
+            totalPop2050: '$totalPop2050',
+            projectedChange: { $subtract: ['$totalPop2050', '$totalPop2025'] },
           },
-          countryCount: '$count',
-          avgGrowthRate: { $round: ['$avgGrowthRate', 4] },
-          avgPercentChange: { $round: ['$avgPercentChange', 2] },
-          totalPop2025: 1,
-          totalPop2050: 1,
-          projectedChange: {
-            $subtract: ['$totalPop2050', '$totalPop2025'],
-          },
-          topCountries: {
+          topGainers: {
             $slice: [
               {
                 $sortArray: {
@@ -332,14 +334,25 @@ router.get('/projection-by-development', async (req, res) => {
                   sortBy: { change: -1 },
                 },
               },
-              5,
+              8,
+            ],
+          },
+          topDecliners: {
+            $slice: [
+              {
+                $sortArray: {
+                  input: '$countries',
+                  sortBy: { change: 1 },
+                },
+              },
+              8,
             ],
           },
         },
       },
     ]);
 
-    res.json(result);
+    res.json(result[0] || {});
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -355,18 +368,27 @@ router.get('/economic-population-correlation', async (req, res) => {
       {
         $lookup: {
           from: 'economic_indicators',
-          localField: 'cca3',
-          foreignField: 'countryCode',
+          let: { countryCode: '$cca3' },
           as: 'economicData',
           pipeline: [
-            { $match: { year: 2024 } },
+            {
+              $match: {
+                $expr: { $eq: ['$countryCode', '$$countryCode'] },
+              },
+            },
+            { $sort: { year: -1 } }, // Grab most recent economic data available
             { $limit: 1 },
           ],
         },
       },
       {
         $match: {
-          'economicData': { $ne: [] }, // Only countries with economic data
+          $expr: { $gt: [{ $size: '$economicData' }, 0] }, // Only countries with economic data
+        },
+      },
+      {
+        $addFields: {
+          economicData: { $arrayElemAt: ['$economicData', 0] },
         },
       },
       {
@@ -376,10 +398,9 @@ router.get('/economic-population-correlation', async (req, res) => {
           density: 1,
           growthRate: 1,
           pop2025: 1,
-          gdpPerCapita: { $arrayElemAt: ['$economicData.gdpPerCapita', 0] },
-          hdi: { $arrayElemAt: ['$economicData.humanDevelopmentIndex', 0] },
-          lifeExpectancy: { $arrayElemAt: ['$economicData.lifeExpectancy', 0] },
-          urbanizationRate: { $arrayElemAt: ['$economicData.urbanizationRate', 0] },
+          gdpPerCapita: '$economicData.gdpPerCapita',
+          lifeExpectancy: '$economicData.lifeExpectancy',
+          urbanizationRate: '$economicData.urbanizationRate',
         },
       },
       {
@@ -387,23 +408,51 @@ router.get('/economic-population-correlation', async (req, res) => {
           _id: null,
           countries: { $push: '$$ROOT' },
           avgDensity: { $avg: '$density' },
-          avgGDP: { $avg: '$gdpPerCapita' },
-          avgHDI: { $avg: '$hdi' },
+          avgGDP: { $avg: { $ifNull: ['$gdpPerCapita', null] } },
           avgGrowthRate: { $avg: '$growthRate' },
-          avgLifeExpectancy: { $avg: '$lifeExpectancy' },
-          avgUrbanization: { $avg: '$urbanizationRate' },
+          avgLifeExpectancy: { $avg: { $ifNull: ['$lifeExpectancy', null] } },
+          avgUrbanization: { $avg: { $ifNull: ['$urbanizationRate', null] } },
         },
       },
       {
         $project: {
           _id: 0,
           summary: {
-            avgDensity: { $round: ['$avgDensity', 2] },
-            avgGDPPerCapita: { $round: ['$avgGDP', 2] },
-            avgHDI: { $round: ['$avgHDI', 3] },
-            avgGrowthRate: { $round: ['$avgGrowthRate', 4] },
-            avgLifeExpectancy: { $round: ['$avgLifeExpectancy', 1] },
-            avgUrbanization: { $round: ['$avgUrbanization', 2] },
+            avgDensity: {
+              $cond: {
+                if: { $ne: ['$avgDensity', null] },
+                then: { $round: ['$avgDensity', 2] },
+                else: null,
+              },
+            },
+            avgGDPPerCapita: {
+              $cond: {
+                if: { $ne: ['$avgGDP', null] },
+                then: { $round: ['$avgGDP', 2] },
+                else: null,
+              },
+            },
+            avgGrowthRate: {
+              $cond: {
+                if: { $ne: ['$avgGrowthRate', null] },
+                then: { $round: ['$avgGrowthRate', 4] },
+                else: null,
+              },
+            },
+            avgLifeExpectancy: {
+              $cond: {
+                if: { $ne: ['$avgLifeExpectancy', null] },
+                then: { $round: ['$avgLifeExpectancy', 1] },
+                else: null,
+              },
+            },
+            avgUrbanization: {
+              $cond: {
+                if: { $ne: ['$avgUrbanization', null] },
+                then: { $round: ['$avgUrbanization', 2] },
+                else: null,
+              },
+            },
           },
           insights: {
             highGDPHighDensity: {
@@ -413,8 +462,10 @@ router.get('/economic-population-correlation', async (req, res) => {
                   as: 'country',
                   cond: {
                     $and: [
-                      { $gt: ['$$country.gdpPerCapita', '$avgGDP'] },
-                      { $gt: ['$$country.density', '$avgDensity'] },
+                      { $ne: ['$$country.gdpPerCapita', null] },
+                      { $ne: ['$$country.density', null] },
+                      { $gt: ['$$country.gdpPerCapita', { $ifNull: ['$avgGDP', 0] }] },
+                      { $gt: ['$$country.density', { $ifNull: ['$avgDensity', 0] }] },
                     ],
                   },
                 },
@@ -427,22 +478,10 @@ router.get('/economic-population-correlation', async (req, res) => {
                   as: 'country',
                   cond: {
                     $and: [
-                      { $lt: ['$$country.gdpPerCapita', '$avgGDP'] },
-                      { $gt: ['$$country.density', '$avgDensity'] },
-                    ],
-                  },
-                },
-              },
-            },
-            highHDILowGrowth: {
-              $size: {
-                $filter: {
-                  input: '$countries',
-                  as: 'country',
-                  cond: {
-                    $and: [
-                      { $gt: ['$$country.hdi', '$avgHDI'] },
-                      { $lt: ['$$country.growthRate', '$avgGrowthRate'] },
+                      { $ne: ['$$country.gdpPerCapita', null] },
+                      { $ne: ['$$country.density', null] },
+                      { $lt: ['$$country.gdpPerCapita', { $ifNull: ['$avgGDP', 0] }] },
+                      { $gt: ['$$country.density', { $ifNull: ['$avgDensity', 0] }] },
                     ],
                   },
                 },
@@ -454,7 +493,13 @@ router.get('/economic-population-correlation', async (req, res) => {
               $slice: [
                 {
                   $sortArray: {
-                    input: '$countries',
+                    input: {
+                      $filter: {
+                        input: '$countries',
+                        as: 'country',
+                        cond: { $ne: ['$$country.gdpPerCapita', null] },
+                      },
+                    },
                     sortBy: { gdpPerCapita: -1 },
                   },
                 },
@@ -465,7 +510,13 @@ router.get('/economic-population-correlation', async (req, res) => {
               $slice: [
                 {
                   $sortArray: {
-                    input: '$countries',
+                    input: {
+                      $filter: {
+                        input: '$countries',
+                        as: 'country',
+                        cond: { $ne: ['$$country.density', null] },
+                      },
+                    },
                     sortBy: { density: -1 },
                   },
                 },
@@ -476,15 +527,43 @@ router.get('/economic-population-correlation', async (req, res) => {
               $slice: [
                 {
                   $sortArray: {
-                    input: '$countries',
-                    sortBy: {
-                      balanceScore: {
-                        $divide: [
-                          { $multiply: ['$gdpPerCapita', '$hdi'] },
-                          { $add: [1, '$density'] },
-                        ],
+                    input: {
+                      $filter: {
+                        input: {
+                          $map: {
+                            input: '$countries',
+                            as: 'country',
+                            in: {
+                              $mergeObjects: [
+                                '$$country',
+                                {
+                                  balanceScore: {
+                                    $cond: {
+                                      if: {
+                                        $and: [
+                                          { $ne: ['$$country.gdpPerCapita', null] },
+                                          { $ne: ['$$country.density', null] },
+                                        ],
+                                      },
+                                      then: {
+                                        $divide: [
+                                          '$$country.gdpPerCapita',
+                                          { $add: [1, '$$country.density'] },
+                                        ],
+                                      },
+                                      else: null,
+                                    },
+                                  },
+                                },
+                              ],
+                            },
+                          },
+                        },
+                        as: 'country',
+                        cond: { $ne: ['$$country.balanceScore', null] },
                       },
                     },
+                    sortBy: { balanceScore: -1 },
                   },
                 },
                 5,
@@ -523,12 +602,33 @@ router.get('/regional-comparison', async (req, res) => {
           pipeline: [
             {
               $match: {
-                $expr: { $in: ['$countryCode', '$$countryCodes'] },
-                year: 2024,
+                $expr: {
+                  $and: [
+                    { $in: ['$countryCode', '$$countryCodes'] },
+                  ],
+                },
+              },
+            },
+            { $sort: { countryCode: 1, year: -1 } },
+            {
+              $group: {
+                _id: '$countryCode',
+                gdpPerCapita: { $first: '$gdpPerCapita' },
+                humanDevelopmentIndex: { $first: '$humanDevelopmentIndex' },
+                lifeExpectancy: { $first: '$lifeExpectancy' },
               },
             },
           ],
           as: 'economicData',
+        },
+      },
+      {
+        // Derive numeric economic metrics from the joined array
+        $addFields: {
+          economicMetrics: {
+            avgGDP: { $avg: '$economicData.gdpPerCapita' },
+            avgLifeExpectancy: { $avg: '$economicData.lifeExpectancy' },
+          },
         },
       },
       {
@@ -544,8 +644,7 @@ router.get('/regional-comparison', async (req, res) => {
                     totalPop2025: { $sum: '$countryData.pop2025' },
                     totalPop2050: { $sum: '$countryData.pop2050' },
                     avgDensity: { $avg: '$countryData.density' },
-                    avgGDP: { $avg: '$economicData.gdpPerCapita' },
-                    avgHDI: { $avg: '$economicData.humanDevelopmentIndex' },
+                    avgGDP: { $avg: '$economicMetrics.avgGDP' },
                   },
                 },
                 totalRegions: { $sum: 1 },
@@ -557,14 +656,18 @@ router.get('/regional-comparison', async (req, res) => {
           ],
           topRegions: [
             {
+              $match: {
+                type: 'subregion', // Only show subregions for more meaningful comparison
+              },
+            },
+            {
               $project: {
                 name: 1,
                 type: 1,
                 totalPop2025: { $sum: '$countryData.pop2025' },
                 totalPop2050: { $sum: '$countryData.pop2050' },
                 avgDensity: { $avg: '$countryData.density' },
-                avgGDP: { $avg: '$economicData.gdpPerCapita' },
-                avgHDI: { $avg: '$economicData.humanDevelopmentIndex' },
+                avgGDP: { $avg: '$economicMetrics.avgGDP' },
                 growthRate: {
                   $avg: '$countryData.growthRate',
                 },
@@ -575,20 +678,26 @@ router.get('/regional-comparison', async (req, res) => {
                   ],
                 },
                 projectedPercentChange: {
-                  $multiply: [
-                    {
-                      $divide: [
+                  $cond: {
+                    if: { $gt: [{ $sum: '$countryData.pop2025' }, 0] },
+                    then: {
+                      $multiply: [
                         {
-                          $subtract: [
-                            { $sum: '$countryData.pop2050' },
+                          $divide: [
+                            {
+                              $subtract: [
+                                { $sum: '$countryData.pop2050' },
+                                { $sum: '$countryData.pop2025' },
+                              ],
+                            },
                             { $sum: '$countryData.pop2025' },
                           ],
                         },
-                        { $sum: '$countryData.pop2025' },
+                        100,
                       ],
                     },
-                    100,
-                  ],
+                    else: null,
+                  },
                 },
               },
             },
@@ -600,9 +709,8 @@ router.get('/regional-comparison', async (req, res) => {
               $project: {
                 name: 1,
                 type: 1,
-                avgGDP: { $avg: '$economicData.gdpPerCapita' },
-                avgHDI: { $avg: '$economicData.humanDevelopmentIndex' },
-                avgLifeExpectancy: { $avg: '$economicData.lifeExpectancy' },
+                avgGDP: { $avg: '$economicMetrics.avgGDP' },
+                avgLifeExpectancy: { $avg: '$economicMetrics.avgLifeExpectancy' },
                 countryCount: { $size: '$countries' },
               },
             },

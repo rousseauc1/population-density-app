@@ -29,8 +29,8 @@ const AnalyticsPanel = ({ isOpen, onClose }) => {
     },
     {
       id: 'projection-by-development',
-      name: 'Projection by Development Level',
-      description: 'Population trends categorized by Human Development Index',
+      name: 'Population Projection Movers',
+      description: 'Top projected population gainers, decliners, and fastest growth',
       endpoint: '/api/analytics/projection-by-development',
     },
     {
@@ -90,7 +90,6 @@ const AnalyticsPanel = ({ isOpen, onClose }) => {
                     {country.economicData && (
                       <>
                         <p>GDP/Capita: ${country.economicData.gdpPerCapita?.toLocaleString() || 'N/A'}</p>
-                        <p>HDI: {country.economicData.humanDevelopmentIndex?.toFixed(3) || 'N/A'}</p>
                       </>
                     )}
                   </div>
@@ -124,15 +123,27 @@ const AnalyticsPanel = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <p className="text-gray-400">Avg Density</p>
-                  <p className="text-yellow-400 font-semibold">{region.avgDensity?.toFixed(1)} /km²</p>
+                  <p className="text-yellow-400 font-semibold">{region.avgDensity?.toFixed(1) || 'N/A'} /km²</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Avg Growth Rate</p>
+                  <p className="text-cyan-400 font-semibold">{(region.avgGrowthRate * 100)?.toFixed(2) || 'N/A'}%</p>
                 </div>
                 <div>
                   <p className="text-gray-400">Avg GDP/Capita</p>
                   <p className="text-purple-400 font-semibold">${region.avgGDPPerCapita?.toLocaleString() || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400">Avg HDI</p>
-                  <p className="text-pink-400 font-semibold">{region.avgHDI?.toFixed(3) || 'N/A'}</p>
+                  <p className="text-gray-400">Avg Life Expectancy</p>
+                  <p className="text-orange-400 font-semibold">{region.avgLifeExpectancy?.toFixed(1) || 'N/A'} years</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Total GDP</p>
+                  <p className="text-indigo-400 font-semibold">${region.totalGDP?.toFixed(2) || 'N/A'}B</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Projected Growth</p>
+                  <p className="text-emerald-400 font-semibold">{formatPopulation(region.projectedGrowth || 0)}</p>
                 </div>
               </div>
             </div>
@@ -145,84 +156,216 @@ const AnalyticsPanel = ({ isOpen, onClose }) => {
     if (selectedQuery?.id === 'overcrowding-analysis') {
       return (
         <div className="space-y-3">
-          {data.slice(0, 10).map((country, idx) => (
-            <div key={idx} className="bg-gray-700 p-4 rounded">
-              <h4 className="text-lg font-bold text-white mb-2">{country.country}</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-gray-400">Density</p>
-                  <p className="text-red-400 font-semibold">{country.density?.toFixed(1)} /km²</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">GDP/Capita</p>
-                  <p className="text-yellow-400 font-semibold">${country.gdpPerCapita?.toLocaleString() || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">HDI</p>
-                  <p className="text-orange-400 font-semibold">{country.hdi || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Life Expectancy</p>
-                  <p className="text-blue-400 font-semibold">{country.lifeExpectancy || 'N/A'} years</p>
+          {data.slice(0, 15).map((country, idx) => {
+            // Check if primary metrics are mostly missing (small territory indicator)
+            const hasPrimaryMetrics = country.gdpPerCapita !== null || country.lifeExpectancy !== null;
+            const showFallback = !hasPrimaryMetrics || (country.gdpPerCapita === null && country.lifeExpectancy === null);
+            
+            return (
+              <div key={idx} className="bg-gray-700 p-4 rounded">
+                <h4 className="text-lg font-bold text-white mb-2">{country.country}</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-400">Density</p>
+                    <p className="text-red-400 font-semibold">{country.density?.toFixed(1)} /km²</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Population 2025</p>
+                    <p className="text-blue-400 font-semibold">{formatPopulation(country.pop2025)}</p>
+                  </div>
+                  
+                  {/* Primary Economic Indicators */}
+                  {country.gdpPerCapita !== null && (
+                    <div>
+                      <p className="text-gray-400">GDP/Capita</p>
+                      <p className="text-yellow-400 font-semibold">${country.gdpPerCapita?.toLocaleString()}</p>
+                    </div>
+                  )}
+                  {country.lifeExpectancy !== null && (
+                    <div>
+                      <p className="text-gray-400">Life Expectancy</p>
+                      <p className="text-purple-400 font-semibold">{country.lifeExpectancy?.toFixed(1)} years</p>
+                    </div>
+                  )}
+                  
+                  {/* Fallback metrics for small territories */}
+                  {showFallback && (
+                    <>
+                      {country.pop2050 !== null && (
+                        <div>
+                          <p className="text-gray-400">Population 2050</p>
+                          <p className="text-green-400 font-semibold">{formatPopulation(country.pop2050)}</p>
+                        </div>
+                      )}
+                      {country.growthRate !== null && (
+                        <div>
+                          <p className="text-gray-400">Growth Rate</p>
+                          <p className="text-cyan-400 font-semibold">{(country.growthRate * 100)?.toFixed(2)}%</p>
+                        </div>
+                      )}
+                      {country.worldPercentage !== null && (
+                        <div>
+                          <p className="text-gray-400">World %</p>
+                          <p className="text-indigo-400 font-semibold">{country.worldPercentage?.toFixed(3)}%</p>
+                        </div>
+                      )}
+                      {country.area !== null && (
+                        <div>
+                          <p className="text-gray-400">Area</p>
+                          <p className="text-pink-400 font-semibold">{country.area?.toLocaleString()} km²</p>
+                        </div>
+                      )}
+                      {country.landAreaKm !== null && (
+                        <div>
+                          <p className="text-gray-400">Land Area</p>
+                          <p className="text-emerald-400 font-semibold">{country.landAreaKm?.toLocaleString()} km²</p>
+                        </div>
+                      )}
+                      {country.gdpTotal !== null && (
+                        <div>
+                          <p className="text-gray-400">Total GDP</p>
+                          <p className="text-yellow-400 font-semibold">${country.gdpTotal?.toFixed(2)}B</p>
+                        </div>
+                      )}
+                      {country.urbanizationRate !== null && (
+                        <div>
+                          <p className="text-gray-400">Urbanization</p>
+                          <p className="text-teal-400 font-semibold">{country.urbanizationRate?.toFixed(1)}%</p>
+                        </div>
+                      )}
+                      {country.literacyRate !== null && (
+                        <div>
+                          <p className="text-gray-400">Literacy Rate</p>
+                          <p className="text-violet-400 font-semibold">{country.literacyRate?.toFixed(1)}%</p>
+                        </div>
+                      )}
+                      {country.unemploymentRate !== null && (
+                        <div>
+                          <p className="text-gray-400">Unemployment</p>
+                          <p className="text-rose-400 font-semibold">{country.unemploymentRate?.toFixed(1)}%</p>
+                        </div>
+                      )}
+                      {country.giniCoefficient !== null && (
+                        <div>
+                          <p className="text-gray-400">Gini Coefficient</p>
+                          <p className="text-amber-400 font-semibold">{country.giniCoefficient?.toFixed(3)}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* Show additional metrics even if primary ones exist */}
+                  {!showFallback && country.gdpTotal !== null && (
+                    <div>
+                      <p className="text-gray-400">Total GDP</p>
+                      <p className="text-indigo-400 font-semibold">${country.gdpTotal?.toFixed(2)}B</p>
+                    </div>
+                  )}
+                  {!showFallback && country.urbanizationRate !== null && (
+                    <div>
+                      <p className="text-gray-400">Urbanization</p>
+                      <p className="text-teal-400 font-semibold">{country.urbanizationRate?.toFixed(1)}%</p>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       );
     }
 
-    // Query 4: Projection by Development
+    // Query 4: Projection movers (gainers/decliners)
     if (selectedQuery?.id === 'projection-by-development') {
+      if (!data || Object.keys(data).length === 0) {
+        return (
+          <div className="bg-gray-700 p-4 rounded">
+            <p className="text-gray-400">No data available</p>
+          </div>
+        );
+      }
+
+      const summary = data.summary || {};
+      const topGainers = data.topGainers || [];
+      const topDecliners = data.topDecliners || [];
+
+      const renderList = (title, list, showPercent = false) => (
+        <div className="bg-gray-700 p-4 rounded">
+          <p className="text-sm font-semibold text-gray-300 mb-2">{title}</p>
+          <div className="space-y-1">
+            {list.map((c, i) => (
+              <div key={i} className="text-xs text-gray-300">
+                <span className="font-semibold text-white">{c.country}</span>
+                {c.pop2025 !== undefined && (
+                  <span className="text-gray-400"> · {formatPopulation(c.pop2025)} → {formatPopulation(c.pop2050)}</span>
+                )}
+                {c.change !== undefined && (
+                  <span className="text-blue-400 ml-2">
+                    {c.change >= 0 ? '+' : ''}
+                    {formatPopulation(c.change)}
+                  </span>
+                )}
+                {showPercent && c.percentChange !== undefined && (
+                  <span className="text-green-400 ml-2">
+                    ({c.percentChange?.toFixed(1)}%)
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
       return (
         <div className="space-y-4">
-          {data.map((level, idx) => (
-            <div key={idx} className="bg-gray-700 p-4 rounded">
-              <h4 className="text-lg font-bold text-white mb-3">{level.developmentLevel}</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                <div>
-                  <p className="text-gray-400">Countries</p>
-                  <p className="text-white font-semibold">{level.countryCount}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Avg Growth</p>
-                  <p className="text-green-400 font-semibold">{(level.avgGrowthRate * 100).toFixed(2)}%</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Pop 2025</p>
-                  <p className="text-blue-400 font-semibold">{formatPopulation(level.totalPop2025)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Pop 2050</p>
-                  <p className="text-purple-400 font-semibold">{formatPopulation(level.totalPop2050)}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-gray-400">Projected Change</p>
-                  <p className="text-yellow-400 font-semibold">
-                    {formatPopulation(level.projectedChange)} ({level.avgPercentChange?.toFixed(1)}%)
-                  </p>
-                </div>
+          <div className="bg-gray-700 p-4 rounded">
+            <h4 className="text-lg font-bold text-white mb-3">Summary</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-gray-400">Avg Growth</p>
+                <p className="text-green-400 font-semibold">
+                  {summary.avgGrowthRate !== undefined ? `${(summary.avgGrowthRate * 100).toFixed(2)}%` : 'N/A'}
+                </p>
               </div>
-              {level.topCountries && level.topCountries.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-600">
-                  <p className="text-xs text-gray-400 mb-2">Top Countries by Growth:</p>
-                  <div className="space-y-1">
-                    {level.topCountries.map((c, i) => (
-                      <div key={i} className="text-xs text-gray-300">
-                        {c.name}: {c.change?.toFixed(1)}% growth
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div>
+                <p className="text-gray-400">Avg % Change</p>
+                <p className="text-yellow-400 font-semibold">
+                  {summary.avgPercentChange !== undefined ? `${summary.avgPercentChange?.toFixed(1)}%` : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Total Pop 2025</p>
+                <p className="text-blue-400 font-semibold">{formatPopulation(summary.totalPop2025 || 0)}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Total Pop 2050</p>
+                <p className="text-purple-400 font-semibold">{formatPopulation(summary.totalPop2050 || 0)}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-gray-400">Projected Change</p>
+                <p className="text-emerald-400 font-semibold">
+                  {formatPopulation(summary.projectedChange || 0)}
+                </p>
+              </div>
             </div>
-          ))}
+          </div>
+
+          {topGainers.length > 0 && renderList('Top Population Gainers (absolute)', topGainers, true)}
+          {topDecliners.length > 0 && renderList('Top Population Decliners (absolute)', topDecliners, true)}
         </div>
       );
     }
 
     // Query 5: Economic-Population Correlation
     if (selectedQuery?.id === 'economic-population-correlation') {
+      if (!data || Object.keys(data).length === 0) {
+        return (
+          <div className="bg-gray-700 p-4 rounded">
+            <p className="text-gray-400">No data available</p>
+          </div>
+        );
+      }
+
       return (
         <div className="space-y-4">
           {data.summary && (
@@ -231,19 +374,23 @@ const AnalyticsPanel = ({ isOpen, onClose }) => {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-gray-400">Avg Density</p>
-                  <p className="text-white font-semibold">{data.summary.avgDensity} /km²</p>
+                  <p className="text-white font-semibold">{data.summary.avgDensity?.toFixed(2) || 'N/A'} /km²</p>
                 </div>
                 <div>
                   <p className="text-gray-400">Avg GDP/Capita</p>
-                  <p className="text-blue-400 font-semibold">${data.summary.avgGDPPerCapita?.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Avg HDI</p>
-                  <p className="text-green-400 font-semibold">{data.summary.avgHDI}</p>
+                  <p className="text-blue-400 font-semibold">${data.summary.avgGDPPerCapita?.toLocaleString() || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-gray-400">Avg Growth Rate</p>
-                  <p className="text-yellow-400 font-semibold">{(data.summary.avgGrowthRate * 100).toFixed(2)}%</p>
+                  <p className="text-yellow-400 font-semibold">{(data.summary.avgGrowthRate * 100)?.toFixed(2) || 'N/A'}%</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Avg Life Expectancy</p>
+                  <p className="text-purple-400 font-semibold">{data.summary.avgLifeExpectancy?.toFixed(1) || 'N/A'} years</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Avg Urbanization</p>
+                  <p className="text-cyan-400 font-semibold">{data.summary.avgUrbanization?.toFixed(1) || 'N/A'}%</p>
                 </div>
               </div>
             </div>
@@ -253,14 +400,54 @@ const AnalyticsPanel = ({ isOpen, onClose }) => {
               <h4 className="text-lg font-bold text-white mb-3">Insights</h4>
               <div className="space-y-2 text-sm">
                 <p className="text-gray-300">
-                  High GDP + High Density: <span className="text-green-400 font-semibold">{data.insights.highGDPHighDensity}</span> countries
+                  High GDP + High Density: <span className="text-green-400 font-semibold">{data.insights.highGDPHighDensity || 0}</span> countries
                 </p>
                 <p className="text-gray-300">
-                  Low GDP + High Density: <span className="text-red-400 font-semibold">{data.insights.lowGDPHighDensity}</span> countries
+                  Low GDP + High Density: <span className="text-red-400 font-semibold">{data.insights.lowGDPHighDensity || 0}</span> countries
                 </p>
-                <p className="text-gray-300">
-                  High HDI + Low Growth: <span className="text-yellow-400 font-semibold">{data.insights.highHDILowGrowth}</span> countries
-                </p>
+              </div>
+            </div>
+          )}
+          {data.topPerformers && (
+            <div className="bg-gray-700 p-4 rounded mt-4">
+              <h4 className="text-lg font-bold text-white mb-3">Top Performers</h4>
+              <div className="space-y-4">
+                {data.topPerformers.highGDP && data.topPerformers.highGDP.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-300 mb-2">Highest GDP/Capita:</p>
+                    <div className="space-y-1">
+                      {data.topPerformers.highGDP.map((country, i) => (
+                        <div key={i} className="text-xs text-gray-400">
+                          {country.country}: ${country.gdpPerCapita?.toLocaleString() || 'N/A'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {data.topPerformers.highDensity && data.topPerformers.highDensity.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-300 mb-2">Highest Density:</p>
+                    <div className="space-y-1">
+                      {data.topPerformers.highDensity.map((country, i) => (
+                        <div key={i} className="text-xs text-gray-400">
+                          {country.country}: {country.density?.toFixed(1) || 'N/A'} /km²
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {data.topPerformers.bestBalance && data.topPerformers.bestBalance.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-300 mb-2">Best Balance (GDP / Density):</p>
+                    <div className="space-y-1">
+                      {data.topPerformers.bestBalance.map((country, i) => (
+                        <div key={i} className="text-xs text-gray-400">
+                          {country.country}: ${country.gdpPerCapita?.toLocaleString() || 'N/A'} · {country.density?.toFixed(1) || 'N/A'} /km²
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -274,17 +461,56 @@ const AnalyticsPanel = ({ isOpen, onClose }) => {
         <div className="space-y-4">
           {data.topRegions && (
             <div>
-              <h4 className="text-lg font-bold text-white mb-3">Top Regions by Population</h4>
+              <h4 className="text-lg font-bold text-white mb-3">Top Subregions by Population (2025)</h4>
+              {(() => {
+                const regions = data.topRegions.slice(0, 10);
+                const maxPop = Math.max(...regions.map(r => r.totalPop2025 || 0), 1);
+                return (
+                  <div className="space-y-3">
+                    {regions.map((region, idx) => {
+                      const pct = Math.max(2, Math.min(100, ((region.totalPop2025 || 0) / maxPop) * 100));
+                      return (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex justify-between text-xs text-gray-300">
+                            <span className="font-semibold text-white">{region.name}</span>
+                            <span className="text-blue-400">{formatPopulation(region.totalPop2025)}</span>
+                          </div>
+                          <div className="h-3 bg-gray-700 rounded">
+                            <div
+                              className="h-3 bg-blue-500 rounded"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          {data.economicLeaders && (
+            <div className="mt-6">
+              <h4 className="text-lg font-bold text-white mb-3">Economic Leaders</h4>
               <div className="space-y-2">
-                {data.topRegions.slice(0, 10).map((region, idx) => (
-                  <div key={idx} className="bg-gray-700 p-3 rounded text-sm">
+                {data.economicLeaders.slice(0, 10).map((region, idx) => (
+                  <div key={idx} className="bg-gray-700 p-4 rounded text-sm">
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-semibold text-white">{region.name}</span>
-                      <span className="text-blue-400">{formatPopulation(region.totalPop2025)}</span>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">GDP/Capita</p>
+                        <span className="text-purple-400">${region.avgGDP?.toLocaleString() || 'N/A'}</span>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-400">
-                      <p>Growth: {(region.growthRate * 100).toFixed(2)}%</p>
-                      <p>GDP/Cap: ${region.avgGDP?.toLocaleString() || 'N/A'}</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-gray-400">Life Expectancy</p>
+                        <p className="text-orange-400 font-semibold">{region.avgLifeExpectancy?.toFixed(1) || 'N/A'} years</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Countries</p>
+                        <p className="text-white font-semibold">{region.countryCount}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
