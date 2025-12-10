@@ -30,10 +30,6 @@ const Controls = ({ selectedMetric, onMetricChange, zoom, onZoomChange, onShowAn
             </select>
           </div>
 
-          <div className="text-sm text-gray-400">
-            <p className="text-xs">Current Metric: <span className="text-blue-400 font-semibold">{metrics.find(m => m.id === selectedMetric)?.label}</span></p>
-          </div>
-
           <div className="ml-auto flex items-center gap-4">
             <button
               onClick={onShowAnalytics}

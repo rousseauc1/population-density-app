@@ -15,8 +15,11 @@ export const getHeatColor = (value, metric, countries) => {
   const min = Math.min(...values);
   const max = Math.max(...values);
 
-  // Normalize value between 0 and 1
-  const normalized = (value - min) / (max - min || 1);
+  const logMin = Math.log(min + 1);
+  const logMax = Math.log(max + 1);
+  const logValue = Math.log(value + 1);
+
+  const normalized = (logValue - logMin) / (logMax - logMin || 1);
 
   // Define color scale: Blue (low) -> Green (medium) -> Red (high)
   if (normalized < 0.33) {

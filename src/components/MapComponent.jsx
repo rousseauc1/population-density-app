@@ -511,21 +511,15 @@ const MapComponent = ({
       </div>
 
       {/* Legend */}
-      <div className="absolute top-6 right-6 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700 max-w-xs" style={{ zIndex: 1000, pointerEvents: 'auto' }}>
+      <div className="absolute top-6 right-6 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700" style={{ zIndex: 1000, pointerEvents: 'auto', minWidth: '300px' }}>
         <h3 className="text-white font-bold mb-3">Heat Scale</h3>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-900 rounded-full"></div>
-            <span className="text-xs text-gray-300">Low</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
-            <span className="text-xs text-gray-300">Medium</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-red-500 rounded-full"></div>
-            <span className="text-xs text-gray-300">High</span>
-          </div>
+        <div className="relative w-full h-8 rounded overflow-hidden" style={{
+          background: 'linear-gradient(to right, #001f3f, #00448f, #00a3e0, #00d084, #ffdc00, #ff9500, #e74c3c)'
+        }}></div>
+        <div className="flex justify-between text-xs text-gray-300 mt-2">
+          <span>Low</span>
+          <span>Medium</span>
+          <span>High</span>
         </div>
       </div>
     </div>
