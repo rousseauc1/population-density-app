@@ -175,7 +175,8 @@ const MapComponent = ({
       'LBN': [33.8547, 35.8623],
       'LSO': [-29.6100, 28.2336],
       'LBR': [6.4281, -9.4295],
-      'LBY': [32.5751, 16.5898],
+      // Libya (nudged inland to avoid Mediterranean placement)
+      'LBY': [27.0, 17.0],
       'LTU': [55.1694, 23.8813],
       'LUX': [49.8153, 6.1296],
       'MDG': [-18.7669, 46.8691],
