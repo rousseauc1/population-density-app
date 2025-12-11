@@ -89,23 +89,57 @@ npm run build
 npm run preview
 ```
 
-## 📊 Database Schema
+## 📊 Data Collections & Schema
 
-### Country Model
+All data lives in MongoDB and is keyed by ISO country codes (`cca3`).
+
+### Countries (`country_stats_2025`)
+Core population + geography data.
 ```javascript
 {
-  id: String,              // ISO 3-letter country code
-  name: String,            // Country name
-  population: Number,      // Total population
-  area: Number,            // Land area in km²
-  population_density: Number, // People per km²
-  life_expectancy: Number, // Average life expectancy in years
-  gdp: Number,             // Gross Domestic Product
-  region: String,          // Geographic region
-  coordinates: {
-    latitude: Number,
-    longitude: Number
-  },
+  country: String,  // "India"
+  cca2: String,     // "IN"
+  cca3: String,     // "IND" (primary key)
+  pop2025: Number,
+  pop2050: Number,
+  area: Number,      // total area
+  landAreaKm: Number, // land area in km²
+  density: Number,   // people per km²
+  growthRate: Number, // decimal (e.g., 0.0089)
+  worldPercentage: Number, // share of world population
+  rank: Number,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Economic Indicators (`economic_indicators`)
+Economic & development metrics (most recent year per country is used in analytics).
+```javascript
+{
+  countryCode: String, // cca3
+  year: Number,
+  gdpPerCapita: Number,
+  gdpTotal: Number,
+  urbanizationRate: Number,
+  lifeExpectancy: Number,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Regions (`regions`)
+Grouping of countries for aggregates.
+```javascript
+{
+  name: String,              // e.g., "Asia"
+  type: String,              // "continent" | "subregion" | "economic_zone"
+  countries: [String],       // array of cca3 codes
+  totalPopulation2025: Number,
+  totalPopulation2050: Number,
+  averageDensity: Number,
+  averageGrowthRate: Number,
+  totalArea: Number,
   createdAt: Date,
   updatedAt: Date
 }
@@ -114,12 +148,20 @@ npm run preview
 ## 🚀 API Endpoints
 
 ### Countries
-- `GET /countries` - Get all countries
-- `GET /countries/:id` - Get specific country
-- `POST /countries` - Create new country
-- `PUT /countries/:id` - Update country data
-- `DELETE /countries/:id` - Delete country
-- `GET /countries/stats/summary` - Get aggregate statistics
+- `GET /api/countries` — all countries
+- `GET /api/countries/:cca3` — one country by ISO3
+- `POST /api/countries` — create (use schema above)
+- `PUT /api/countries/:cca3` — update
+- `DELETE /api/countries/:cca3` — delete
+- `GET /api/countries/stats/summary` — aggregate snapshot
+
+### Analytics (aggregation pipelines)
+- `GET /api/analytics/high-growth-with-economics`
+- `GET /api/analytics/regional-analysis`
+- `GET /api/analytics/overcrowding-analysis`
+- `GET /api/analytics/projection-by-development`
+- `GET /api/analytics/economic-population-correlation`
+- `GET /api/analytics/regional-comparison`
 
 ## 🎨 Color Scale Guide
 
@@ -161,20 +203,23 @@ Colors are normalized based on the min/max values of the selected metric across 
 
 ## 🔄 Data Flow
 
-1. App loads and fetches country data from backend API
-2. MapComponent renders GeoJSON features with colors based on metric
-3. User selects different metric → colors update dynamically
-4. User clicks country → Sidebar updates with details
-5. Rankings list updates based on selected metric
+1. Backend exposes country + analytics endpoints (see above)
+2. Frontend fetches countries and renders heat-map markers by selected metric
+3. Sidebar/top lists update on selection; analytics panel calls aggregation endpoints
 
-## 📝 Sample Data Population
+## 📥 Data Management
 
-To populate the database with sample data:
+- Import/refresh countries: use your data import (CSV or manual); ensure `cca3` codes align with map markers.
+- Add a missing country quickly: `POST /api/countries` with the country schema.
+- Economic data: import via `server/scripts/importCSV.js` (configure paths/mappings).
+- Update region aggregates: `npm run update-region-stats` (from `server/`).
+- Verify collections: `node server/scripts/verifyData.js`.
 
-```bash
-# Create a seed file: server/seed.js
-# Run: node server/seed.js
-```
+## 🐛 Troubleshooting
+
+- Missing map points: ensure the country exists in `country_stats_2025` and has a centroid in `MapComponent.jsx` (centroid map). The basemap tile layer supplies boundaries; markers come from countries data.
+- Region stats zeroed: run `npm run update-region-stats` (from `server/`).
+- Mongo connection issues: confirm `MONGODB_URI` in `.env` and that MongoDB is running.
 
 ## 🐛 Troubleshooting
 

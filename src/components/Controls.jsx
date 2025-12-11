@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Controls = ({ selectedMetric, onMetricChange, zoom, onZoomChange }) => {
+const Controls = ({ selectedMetric, onMetricChange, zoom, onZoomChange, onShowAnalytics }) => {
   const metrics = [
     { id: 'density', label: 'Population Density (people/km²)' },
     { id: 'pop2025', label: 'Population 2025' },
@@ -30,14 +30,19 @@ const Controls = ({ selectedMetric, onMetricChange, zoom, onZoomChange }) => {
             </select>
           </div>
 
-          <div className="text-sm text-gray-400">
-            <p className="text-xs">Current Metric: <span className="text-blue-400 font-semibold">{metrics.find(m => m.id === selectedMetric)?.label}</span></p>
-          </div>
-
-          <div className="ml-auto text-sm text-gray-400">
-            <p className="text-xs text-center">
-              💡 Hover over countries for details. Click to select.
-            </p>
+          <div className="ml-auto flex items-center gap-4">
+            <button
+              onClick={onShowAnalytics}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold text-sm transition shadow-lg"
+              title="View Complex Analytics Queries"
+            >
+              📊 Analytics
+            </button>
+            <div className="text-sm text-gray-400">
+              <p className="text-xs text-center">
+                💡 Hover over countries for details. Click to select.
+              </p>
+            </div>
           </div>
         </div>
       </div>

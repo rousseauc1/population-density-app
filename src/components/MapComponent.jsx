@@ -116,6 +116,7 @@ const MapComponent = ({
       'KOR': [35.9078, 127.7669],
       'SYR': [34.8021, 38.9968],
       'CIV': [7.5400, -5.5471],
+      'CAF': [6.6111, 20.9394],
       'KAZ': [48.0196, 66.9237],
       'CMR': [3.8480, 11.5021],
       'AUS': [-25.2744, 133.7751],
@@ -128,6 +129,7 @@ const MapComponent = ({
       'TUN': [33.8869, 9.5375],
       'RWA': [-1.9536, 29.8739],
       'GIN': [9.9456, -9.6966],
+      'TCD': [15.4542, 18.7322],
       'ZWE': [-19.0154, 29.1549],
       'SEN': [14.4974, -14.4524],
       'GUY': [4.8604, -58.9302],
@@ -173,7 +175,8 @@ const MapComponent = ({
       'LBN': [33.8547, 35.8623],
       'LSO': [-29.6100, 28.2336],
       'LBR': [6.4281, -9.4295],
-      'LBY': [32.5751, 16.5898],
+      // Libya (nudged inland to avoid Mediterranean placement)
+      'LBY': [27.0, 17.0],
       'LTU': [55.1694, 23.8813],
       'LUX': [49.8153, 6.1296],
       'MDG': [-18.7669, 46.8691],
@@ -511,21 +514,15 @@ const MapComponent = ({
       </div>
 
       {/* Legend */}
-      <div className="absolute top-6 right-6 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700 max-w-xs" style={{ zIndex: 1000, pointerEvents: 'auto' }}>
+      <div className="absolute top-6 right-6 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700" style={{ zIndex: 1000, pointerEvents: 'auto', minWidth: '300px' }}>
         <h3 className="text-white font-bold mb-3">Heat Scale</h3>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-900 rounded-full"></div>
-            <span className="text-xs text-gray-300">Low</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-500 rounded-full"></div>
-            <span className="text-xs text-gray-300">Medium</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-red-500 rounded-full"></div>
-            <span className="text-xs text-gray-300">High</span>
-          </div>
+        <div className="relative w-full h-8 rounded overflow-hidden" style={{
+          background: 'linear-gradient(to right, #001f3f, #00448f, #00a3e0, #00d084, #ffdc00, #ff9500, #e74c3c)'
+        }}></div>
+        <div className="flex justify-between text-xs text-gray-300 mt-2">
+          <span>Low</span>
+          <span>Medium</span>
+          <span>High</span>
         </div>
       </div>
     </div>
